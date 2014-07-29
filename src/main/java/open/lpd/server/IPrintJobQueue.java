@@ -22,9 +22,9 @@ import java.io.InputStream;
 
 /**
  * LPD queue interface for implementing a LPD protocol server. A file based
- * sample implementation is provided (@see FileBasedLpdQueue).
+ * sample implementation is provided (@see FileBasedPrintJobQueue).
  */
-public interface ILpdQueue {
+public interface IPrintJobQueue {
 
 	/**
 	 * Prints any waiting jobs for the specified queue.
@@ -109,7 +109,7 @@ public interface ILpdQueue {
 	 *            the number of bytes to receive.
 	 * @param name
 	 *            the name of the control file.
-	 * @param is
+	 * @param clientInStream
 	 *            the input stream to read the control file from.
 	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
 	 *         or an error code (any value not equal to
@@ -117,7 +117,7 @@ public interface ILpdQueue {
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */
-	byte receiveControlFile(int count, String name, InputStream is)
+	byte receiveControlFile(int count, String name, InputStream clientInStream)
 			throws IOException;
 
 	/**
@@ -127,7 +127,7 @@ public interface ILpdQueue {
 	 *            the number of bytes to receive.
 	 * @param name
 	 *            the name of the data file.
-	 * @param is
+	 * @param clientInStream
 	 *            the input stream to read the data file from.
 	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
 	 *         or an error code (any value not equal to
@@ -135,7 +135,7 @@ public interface ILpdQueue {
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */
-	byte receiveDataFile(int count, String name, InputStream is)
+	byte receiveDataFile(int count, String name, InputStream clientInStream)
 			throws IOException;
 
 	/**

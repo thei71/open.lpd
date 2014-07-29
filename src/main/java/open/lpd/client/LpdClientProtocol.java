@@ -24,6 +24,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 
+/**
+ * Use the LpdClientProtocol class to implement your own LPD client.
+ */
 public class LpdClientProtocol {
 
 	public static final byte CMD_PRINT_ANY_WAITING_JOBS = 1;
@@ -40,35 +43,80 @@ public class LpdClientProtocol {
 	public static final char LPD_LF = 0x0a;
 	public static final char LPD_WHITESPACE = ' ';
 
-	private String lpdCharset;
+	private InputStream serverInStream;
+	private OutputStream serverOutStream;
+	private String protocolCharset;
 	private boolean sendDataFirst;
 	private String clientHost;
 	private String user;
 
-	public LpdClientProtocol() {
-		lpdCharset = LPD_DEFAULT_CHARSET;
-		sendDataFirst = false;
+	/**
+	 * Creates a LPD client protocol that serves a single server connection.
+	 * 
+	 * @param serverOutStream
+	 *            the server out stream.
+	 * @param serverInStream
+	 *            the server in stream.
+	 */
+	public LpdClientProtocol(InputStream serverInStream,
+			OutputStream serverOutStream) {
+		this.serverInStream = serverInStream;
+		this.serverOutStream = serverOutStream;
+		protocolCharset = LPD_DEFAULT_CHARSET;
 		clientHost = DEFAULT_CLIENT_HOST;
+		sendDataFirst = false;
 		user = null;
 	}
 
-	public void setCharset(String charsetName) {
-		lpdCharset = charsetName;
+	/**
+	 * Sets the charset to use for the protocol.
+	 * 
+	 * @param protocolCharset
+	 *            the charset to use.
+	 */
+	public void setCharset(String protocolCharset) {
+		this.protocolCharset = protocolCharset;
 	}
 
+	/**
+	 * Tells the protocol to send the data file first.
+	 * 
+	 * @param sendDataFirst
+	 *            send data file first.
+	 */
 	public void setSendDataFirst(boolean sendDataFirst) {
 		this.sendDataFirst = sendDataFirst;
 	}
 
+	/**
+	 * Sets the client host name.
+	 * 
+	 * @param clientHost
+	 *            the client host name.
+	 */
 	public void setClientHost(String clientHost) {
 		this.clientHost = clientHost;
 	}
 
+	/**
+	 * Sets the user name.
+	 * 
+	 * @param user
+	 *            the user name.
+	 */
 	public void setUser(String user) {
 		this.user = user;
 	}
 
-	public void printQueue(OutputStream os, String queue) throws IOException {
+	/**
+	 * Sends the print queue command.
+	 * 
+	 * @param queue
+	 *            the queue name.
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	public void printQueue(String queue) throws IOException {
 
 		// +----+-------+----+
 		// | 01 | Queue | LF |
@@ -78,36 +126,64 @@ public class LpdClientProtocol {
 		//
 		// This command starts the printing process if it not already running.
 
-		os.write(CMD_PRINT_ANY_WAITING_JOBS);
-		os.write(queue.getBytes(lpdCharset));
-		os.write(LPD_LF);
-		os.flush();
+		serverOutStream.write(CMD_PRINT_ANY_WAITING_JOBS);
+		serverOutStream.write(queue.getBytes(protocolCharset));
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
 	}
 
-	public void sendFile(OutputStream os, InputStream is, String queue,
-			String name, InputStream dataStream, long dataStreamSize)
-			throws IOException {
+	/**
+	 * Sends the send file command.
+	 * 
+	 * @param queue
+	 *            the queue name.
+	 * @param name
+	 *            the name of the file.
+	 * @param dataStream
+	 *            the data stream that contains the file data.
+	 * @param dataStreamSize
+	 *            the length of the data stream.
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	public void sendFile(String queue, String name, InputStream dataStream,
+			long dataStreamSize) throws IOException {
 
 		// create control file
 
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		bos.write(("H" + clientHost + LPD_LF).getBytes(lpdCharset));
-		bos.write(("J" + name + LPD_LF).getBytes(lpdCharset));
-		bos.write(("N" + name + LPD_LF).getBytes(lpdCharset));
+		bos.write(("H" + clientHost + LPD_LF).getBytes(protocolCharset));
+		bos.write(("J" + name + LPD_LF).getBytes(protocolCharset));
+		bos.write(("N" + name + LPD_LF).getBytes(protocolCharset));
 		if (user != null) {
-			bos.write(("P" + user + LPD_LF).getBytes(lpdCharset));
+			bos.write(("P" + user + LPD_LF).getBytes(protocolCharset));
 		}
 		byte[] controlFile = bos.toByteArray();
 		ByteArrayInputStream controlStream = new ByteArrayInputStream(
 				controlFile);
-		sendFile(os, is, queue, dataStream, dataStreamSize, controlStream,
+		sendFile(queue, dataStream, dataStreamSize, controlStream,
 				controlFile.length);
 	}
 
-	public void sendFile(OutputStream os, InputStream is, String queue,
-			InputStream dataStream, long dataStreamSize,
-			InputStream controlStream, long controlStreamSize)
-			throws IOException {
+	/**
+	 * Sends the send file command.
+	 * 
+	 * @param queue
+	 *            the queue name.
+	 * @param dataStream
+	 *            the data stream that contains the file data.
+	 * @param dataStreamSize
+	 *            the length of the data stream.
+	 * @param controlStream
+	 *            the control stream that contains the control data.
+	 * @param controlStreamSize
+	 *            the length of the control stream.
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	public void sendFile(String queue, InputStream dataStream,
+			long dataStreamSize, InputStream controlStream,
+			long controlStreamSize) throws IOException {
 
 		// +----+-------+----+
 		// | 02 | Queue | LF |
@@ -124,26 +200,26 @@ public class LpdClientProtocol {
 		// zero bits. A negative acknowledgement is an octet of any other
 		// pattern.
 
-		os.write(CMD_RECEIVE_A_PRINTER_JOB);
-		os.write(queue.getBytes(lpdCharset));
-		os.write(LPD_LF);
-		os.flush();
-		byte[] ack = readResponse(is, 1);
+		serverOutStream.write(CMD_RECEIVE_A_PRINTER_JOB);
+		serverOutStream.write(queue.getBytes(protocolCharset));
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
+		byte[] ack = readResponse(1);
 		if (ack[0] != ACK_SUCCESS) {
-			throw new IOException("Received invalid ack: " + ack);
+			throw new IOException("Received invalid ack: " + ack[0]);
 		}
 		if (sendDataFirst) {
-			sendDataFile(os, is, dataStream, dataStreamSize);
-			sendControlFile(os, is, controlStream, controlStreamSize);
+			sendDataFile(dataStream, dataStreamSize);
+			sendControlFile(controlStream, controlStreamSize);
 		} else {
-			sendControlFile(os, is, controlStream, controlStreamSize);
-			sendDataFile(os, is, dataStream, dataStreamSize);
+			sendControlFile(controlStream, controlStreamSize);
+			sendDataFile(dataStream, dataStreamSize);
 		}
 	}
 
-	private void sendControlFile(OutputStream os, InputStream is,
-			InputStream controlStream, long controlStreamSize)
-			throws IOException, UnsupportedEncodingException {
+	private void sendControlFile(InputStream controlStream,
+			long controlStreamSize) throws IOException,
+			UnsupportedEncodingException {
 
 		// +----+-------+----+------+----+
 		// | 02 | Count | SP | Name | LF |
@@ -167,15 +243,16 @@ public class LpdClientProtocol {
 		// processing must occur at this point.
 
 		String controlFileName = "cfA000" + clientHost;
-		os.write(SUB_CMD_RECEIVE_CONTROL_FILE);
-		os.write(Long.toString(controlStreamSize).getBytes(lpdCharset));
-		os.write(LPD_WHITESPACE);
-		os.write(controlFileName.getBytes(lpdCharset));
-		os.write(LPD_LF);
-		os.flush();
-		byte[] ack = readResponse(is, 1);
+		serverOutStream.write(SUB_CMD_RECEIVE_CONTROL_FILE);
+		serverOutStream.write(Long.toString(controlStreamSize).getBytes(
+				protocolCharset));
+		serverOutStream.write(LPD_WHITESPACE);
+		serverOutStream.write(controlFileName.getBytes(protocolCharset));
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
+		byte[] ack = readResponse(1);
 		if (ack[0] != ACK_SUCCESS) {
-			throw new IOException("Received invalid ack: " + ack);
+			throw new IOException("Received invalid ack: " + ack[0]);
 		}
 		long bread = 0;
 		while (bread < controlStreamSize) {
@@ -183,23 +260,22 @@ public class LpdClientProtocol {
 			if (b == -1) {
 				break;
 			}
-			os.write(b);
+			serverOutStream.write(b);
 			bread++;
 		}
-		os.write(ACK_SUCCESS);
-		os.flush();
-		ack = readResponse(is, 1);
+		serverOutStream.write(ACK_SUCCESS);
+		serverOutStream.flush();
+		ack = readResponse(1);
 		if (ack[0] != ACK_SUCCESS) {
-			throw new IOException("Received invalid ack: " + ack);
+			throw new IOException("Received invalid ack: " + ack[0]);
 		}
 		if (bread != controlStreamSize) {
-			abortPrintJob(os);
+			abortPrintJob();
 		}
 	}
 
-	private void sendDataFile(OutputStream os, InputStream is,
-			InputStream dataStream, long dataStreamSize) throws IOException,
-			UnsupportedEncodingException {
+	private void sendDataFile(InputStream dataStream, long dataStreamSize)
+			throws IOException, UnsupportedEncodingException {
 		byte[] ack;
 
 		// +----+-------+----+------+----+
@@ -224,15 +300,16 @@ public class LpdClientProtocol {
 		// processing must occur at this point.
 
 		String dataFileName = "dfA000" + clientHost;
-		os.write(SUB_CMD_RECEIVE_DATA_FILE);
-		os.write(Long.toString(dataStreamSize).getBytes(lpdCharset));
-		os.write(LPD_WHITESPACE);
-		os.write(dataFileName.getBytes(lpdCharset));
-		os.write(LPD_LF);
-		os.flush();
-		ack = readResponse(is, 1);
+		serverOutStream.write(SUB_CMD_RECEIVE_DATA_FILE);
+		serverOutStream.write(Long.toString(dataStreamSize).getBytes(
+				protocolCharset));
+		serverOutStream.write(LPD_WHITESPACE);
+		serverOutStream.write(dataFileName.getBytes(protocolCharset));
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
+		ack = readResponse(1);
 		if (ack[0] != ACK_SUCCESS) {
-			throw new IOException("Received invalid ack: " + ack);
+			throw new IOException("Received invalid ack: " + ack[0]);
 		}
 		long bread = 0;
 		while (bread < dataStreamSize) {
@@ -240,21 +317,21 @@ public class LpdClientProtocol {
 			if (b == -1) {
 				break;
 			}
-			os.write(b);
+			serverOutStream.write(b);
 			bread++;
 		}
-		os.write(ACK_SUCCESS);
-		os.flush();
-		ack = readResponse(is, 1);
+		serverOutStream.write(ACK_SUCCESS);
+		serverOutStream.flush();
+		ack = readResponse(1);
 		if (ack[0] != ACK_SUCCESS) {
-			throw new IOException("Received invalid ack: " + ack);
+			throw new IOException("Received invalid ack: " + ack[0]);
 		}
 		if (bread != dataStreamSize) {
-			abortPrintJob(os);
+			abortPrintJob();
 		}
 	}
 
-	private void abortPrintJob(OutputStream os) throws IOException {
+	private void abortPrintJob() throws IOException {
 
 		// +----+----+
 		// | 01 | LF |
@@ -264,13 +341,24 @@ public class LpdClientProtocol {
 		// No operands should be supplied. This subcommand will remove any
 		// files which have been created during this "Receive job" command.
 
-		os.write(SUB_CMD_ABORT_JOB);
-		os.write(LPD_LF);
-		os.flush();
+		serverOutStream.write(SUB_CMD_ABORT_JOB);
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
 	}
 
-	public String getShortQueueState(OutputStream os, InputStream is,
-			String queue, String jobs) throws IOException {
+	/**
+	 * Sends the get short queue state command.
+	 * 
+	 * @param queue
+	 *            the queue name.
+	 * @param jobs
+	 *            the job list.
+	 * @return the short queue state.
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	public String getShortQueueState(String queue, String jobs)
+			throws IOException {
 
 		// +----+-------+----+------+----+
 		// | 03 | Queue | SP | List | LF |
@@ -287,20 +375,31 @@ public class LpdClientProtocol {
 		// indicated with ASCII LF control characters. The lines may also
 		// contain ASCII HT control characters.
 
-		os.write(CMD_SEND_QUEUE_STATE_SHORT);
-		os.write(queue.getBytes(lpdCharset));
+		serverOutStream.write(CMD_SEND_QUEUE_STATE_SHORT);
+		serverOutStream.write(queue.getBytes(protocolCharset));
 		if (jobs != null) {
-			os.write(LPD_WHITESPACE);
-			os.write(jobs.getBytes(lpdCharset));
+			serverOutStream.write(LPD_WHITESPACE);
+			serverOutStream.write(jobs.getBytes(protocolCharset));
 		}
-		os.write(LPD_LF);
-		os.flush();
-		byte[] response = readResponse(is, null);
-		return new String(response, lpdCharset);
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
+		byte[] response = readResponse(null);
+		return new String(response, protocolCharset);
 	}
 
-	public String getLongQueueState(OutputStream os, InputStream is,
-			String queue, String jobs) throws IOException {
+	/**
+	 * Sends the get long queue state command.
+	 * 
+	 * @param queue
+	 *            the queue name.
+	 * @param jobs
+	 *            the job list.
+	 * @return the long queue state.
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	public String getLongQueueState(String queue, String jobs)
+			throws IOException {
 
 		// +----+-------+----+------+----+
 		// | 04 | Queue | SP | List | LF |
@@ -317,20 +416,29 @@ public class LpdClientProtocol {
 		// indicated with ASCII LF control characters. The lines may also
 		// contain ASCII HT control characters.
 
-		os.write(CMD_SEND_QUEUE_STATE_LONG);
-		os.write(queue.getBytes(lpdCharset));
+		serverOutStream.write(CMD_SEND_QUEUE_STATE_LONG);
+		serverOutStream.write(queue.getBytes(protocolCharset));
 		if (jobs != null) {
-			os.write(LPD_WHITESPACE);
-			os.write(jobs.getBytes(lpdCharset));
+			serverOutStream.write(LPD_WHITESPACE);
+			serverOutStream.write(jobs.getBytes(protocolCharset));
 		}
-		os.write(LPD_LF);
-		os.flush();
-		byte[] response = readResponse(is, null);
-		return new String(response, lpdCharset);
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
+		byte[] response = readResponse(null);
+		return new String(response, protocolCharset);
 	}
 
-	public void removeJobs(OutputStream os, String queue, String jobs)
-			throws IOException {
+	/**
+	 * Sends the remove jobs command.
+	 * 
+	 * @param queue
+	 *            the queue name.
+	 * @param jobs
+	 *            the job list.
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	public void removeJobs(String queue, String jobs) throws IOException {
 
 		// +----+-------+----+-------+----+------+----+
 		// | 05 | Queue | SP | Agent | SP | List | LF |
@@ -348,24 +456,23 @@ public class LpdClientProtocol {
 		// numbers. That is, agent "root" can delete jobs by user name but no
 		// other agents can.
 
-		os.write(CMD_REMOVE_JOBS);
-		os.write(queue.getBytes(lpdCharset));
-		os.write(LPD_WHITESPACE);
-		os.write(user.getBytes(lpdCharset));
+		serverOutStream.write(CMD_REMOVE_JOBS);
+		serverOutStream.write(queue.getBytes(protocolCharset));
+		serverOutStream.write(LPD_WHITESPACE);
+		serverOutStream.write(user.getBytes(protocolCharset));
 		if (jobs != null) {
-			os.write(LPD_WHITESPACE);
-			os.write(jobs.getBytes(lpdCharset));
+			serverOutStream.write(LPD_WHITESPACE);
+			serverOutStream.write(jobs.getBytes(protocolCharset));
 		}
-		os.write(LPD_LF);
-		os.flush();
+		serverOutStream.write(LPD_LF);
+		serverOutStream.flush();
 	}
 
-	private byte[] readResponse(InputStream is, Integer count)
-			throws IOException {
+	private byte[] readResponse(Integer count) throws IOException {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		if (count == null) {
 			while (true) {
-				int b = is.read();
+				int b = serverInStream.read();
 				if (b == -1) {
 					break;
 				}
@@ -373,7 +480,7 @@ public class LpdClientProtocol {
 			}
 		} else {
 			for (int i = 0; i < count; i++) {
-				int b = is.read();
+				int b = serverInStream.read();
 				if (b == -1) {
 					throw new IOException("Could only read " + bos.size()
 							+ " out of " + count + " byte.");

@@ -17,6 +17,7 @@
  */
 package open.lpd.client.impl;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -28,6 +29,10 @@ import java.net.Socket;
 
 import open.lpd.client.LpdClientProtocol;
 
+/**
+ * A ready to go LPD client (aka "lpr") that can send files and standard LPD
+ * commands to a LPD server.
+ */
 public class LpdClient {
 
 	private static final String CMD_PRINT = "print";
@@ -84,8 +89,8 @@ public class LpdClient {
 			// establish connection
 
 			socket.connect(new InetSocketAddress(host, Integer.valueOf(port)));
-			OutputStream os = socket.getOutputStream();
-			InputStream is = socket.getInputStream();
+			OutputStream serverOutStream = socket.getOutputStream();
+			InputStream serverInStream = socket.getInputStream();
 			String clientHost = socket.getLocalAddress().getHostName();
 
 			// run client
@@ -93,9 +98,11 @@ public class LpdClient {
 			if (queue == null) {
 				throw new IllegalArgumentException(OPTION_QUEUE);
 			}
-			LpdClientProtocol lpdClientProtocol = new LpdClientProtocol();
+			LpdClientProtocol lpdClientProtocol = new LpdClientProtocol(
+					serverInStream, serverOutStream);
 			if (cmd.equalsIgnoreCase(CMD_PRINT)) {
-				lpdClientProtocol.printQueue(os, queue);
+				lpdClientProtocol.printQueue(queue);
+				System.out.println("Printed.");
 			} else if (cmd.equalsIgnoreCase(CMD_SEND)) {
 				if (agent != null) {
 					lpdClientProtocol.setUser(agent);
@@ -115,23 +122,30 @@ public class LpdClient {
 				FileInputStream fis = null;
 				try {
 					fis = new FileInputStream(fileObj);
-					lpdClientProtocol.sendFile(os, is, queue,
-							fileObj.getName(), fis, fileObj.length());
+					lpdClientProtocol.sendFile(queue, fileObj.getName(),
+							new BufferedInputStream(fis), fileObj.length());
 				} finally {
 					if (fis != null) {
 						fis.close();
 					}
 				}
 			} else if (cmd.equalsIgnoreCase(CMD_STATE)) {
-				lpdClientProtocol.getShortQueueState(os, is, queue, jobs);
+				String state = lpdClientProtocol
+						.getShortQueueState(queue, jobs);
+				System.out.println("State:");
+				System.out.println(state);
 			} else if (cmd.equalsIgnoreCase(CMD_LSTATE)) {
-				lpdClientProtocol.getLongQueueState(os, is, queue, jobs);
+				String lstate = lpdClientProtocol
+						.getLongQueueState(queue, jobs);
+				System.out.println("LState:");
+				System.out.println(lstate);
 			} else if (cmd.equalsIgnoreCase(CMD_REMOVE)) {
 				if (agent == null) {
 					throw new IllegalArgumentException(OPTION_AGENT);
 				}
 				lpdClientProtocol.setUser(agent);
-				lpdClientProtocol.removeJobs(os, queue, jobs);
+				lpdClientProtocol.removeJobs(queue, jobs);
+				System.out.println("Removed.");
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

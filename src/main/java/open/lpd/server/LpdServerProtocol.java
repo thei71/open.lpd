@@ -21,6 +21,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+/**
+ * Use the LpdServerProtocol class to implement your own LPD server. The
+ * LpdServerProtocol uses the {@link IPrintJobQueue} interface as a queue back
+ * end to handle print jobs.
+ */
 public class LpdServerProtocol {
 
 	public static final byte CMD_PRINT_ANY_WAITING_JOBS = 1;
@@ -32,47 +37,69 @@ public class LpdServerProtocol {
 	public static final byte SUB_CMD_RECEIVE_CONTROL_FILE = 2;
 	public static final byte SUB_CMD_RECEIVE_DATA_FILE = 3;
 	public static final String LPD_DEFAULT_CHARSET = "ASCII";
-	private static final String REGEXP_WHITESPACE = "\\s";
 	public static final byte ACK_SUCCESS = 0;
+	private static final String REGEXP_WHITESPACE = "\\s";
 	private static final int LPD_LF = 0x0a;
 
-	private ILpdQueue lpdQueue;
-	private InputStream is;
-	private OutputStream os;
-	private String lpdCharset = LPD_DEFAULT_CHARSET;
+	private IPrintJobQueue printJobQueue;
+	private InputStream clientInStream;
+	private OutputStream clientOutStream;
+	private String protocolCharset = LPD_DEFAULT_CHARSET;
 
-	public LpdServerProtocol(InputStream is, OutputStream os, ILpdQueue lpdQueue) {
-		this.is = is;
-		this.os = os;
-		this.lpdQueue = lpdQueue;
+	/**
+	 * Creates a LPD server protocol which handles a single client connection.
+	 * 
+	 * @param clientInStream
+	 *            the stream to receive protocol commands from the client.
+	 * @param clientOutStream
+	 *            the stream to send protocol commands to the client.
+	 * @param lpdQueue
+	 *            the queue that handles the print jobs of this server.
+	 */
+	public LpdServerProtocol(InputStream clientInStream,
+			OutputStream clientOutStream, IPrintJobQueue lpdQueue) {
+		this.clientInStream = clientInStream;
+		this.clientOutStream = clientOutStream;
+		this.printJobQueue = lpdQueue;
 	}
 
-	public void setCharset(String charsetName) {
-		lpdCharset = charsetName;
+	/**
+	 * Sets the charset to use for the protocol.
+	 * 
+	 * @param protocolCharset
+	 *            the charset to use.
+	 */
+	public void setCharset(String protocolCharset) {
+		this.protocolCharset = protocolCharset;
 	}
 
+	/**
+	 * Handles client connections.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
 	public void handle() throws IOException {
 
-		int cmd = is.read();
+		int cmd = clientInStream.read();
 		switch (cmd) {
 		case CMD_PRINT_ANY_WAITING_JOBS:
-			handlePrintAnyWaitingJobsCommand(is);
+			handlePrintAnyWaitingJobsCommand();
 			break;
 		case CMD_RECEIVE_A_PRINTER_JOB:
-			handleReceiveAPrinterJobCommand(is, os);
-			os.flush();
+			handleReceiveAPrinterJobCommand();
 			boolean moreSubCmdsAvailable = true;
 			while (moreSubCmdsAvailable) {
-				int subCmd = is.read();
+				int subCmd = clientInStream.read();
 				switch (subCmd) {
 				case SUB_CMD_ABORT_JOB:
 					handleAbortJobCommand();
 					break;
 				case SUB_CMD_RECEIVE_CONTROL_FILE:
-					handleReceiveControlFile(is, os);
+					handleReceiveControlFile();
 					break;
 				case SUB_CMD_RECEIVE_DATA_FILE:
-					handleReceiveDataFile(is, os);
+					handleReceiveDataFile();
 					break;
 				case -1:
 					moreSubCmdsAvailable = false;
@@ -81,24 +108,29 @@ public class LpdServerProtocol {
 					throw new IOException("unsupported subCmd: " + cmd);
 				}
 			}
-			lpdQueue.finishedReceivingAPrinterJob();
+			printJobQueue.finishedReceivingAPrinterJob();
 			break;
 		case CMD_SEND_QUEUE_STATE_SHORT:
-			handleSendQueueStateShortCommand(is, os);
+			handleSendQueueStateShortCommand();
 			break;
 		case CMD_SEND_QUEUE_STATE_LONG:
-			handleSendQueueStateLongCommand(is, os);
+			handleSendQueueStateLongCommand();
 			break;
 		case CMD_REMOVE_JOBS:
-			handleRemoveJobsCommand(is);
+			handleRemoveJobsCommand();
 			break;
 		default:
 			throw new IOException("unsupported cmd: " + cmd);
 		}
 	}
 
-	private void handlePrintAnyWaitingJobsCommand(InputStream is)
-			throws IOException {
+	/**
+	 * Handles the print any waiting jobs command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handlePrintAnyWaitingJobsCommand() throws IOException {
 
 		// +----+-------+----+
 		// | 01 | Queue | LF |
@@ -108,12 +140,17 @@ public class LpdServerProtocol {
 		//
 		// This command starts the printing process if it not already running.
 
-		String queue = readLine(is);
-		lpdQueue.printAnyWaitingJobs(queue);
+		String queue = readLine();
+		printJobQueue.printAnyWaitingJobs(queue);
 	}
 
-	private void handleReceiveAPrinterJobCommand(InputStream is, OutputStream os)
-			throws IOException {
+	/**
+	 * Handles the receive a printer job command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handleReceiveAPrinterJobCommand() throws IOException {
 
 		// +----+-------+----+
 		// | 02 | Queue | LF |
@@ -130,13 +167,18 @@ public class LpdServerProtocol {
 		// zero bits. A negative acknowledgement is an octet of any other
 		// pattern.
 
-		String queue = readLine(is);
-		byte code = lpdQueue.receiveAPrinterJob(queue);
-		acknowledge(null, os, code);
+		String queue = readLine();
+		byte code = printJobQueue.receiveAPrinterJob(queue);
+		acknowledge(false, code);
 	}
 
-	private void handleSendQueueStateShortCommand(InputStream is,
-			OutputStream os) throws IOException {
+	/**
+	 * Handles the send queue state short command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handleSendQueueStateShortCommand() throws IOException {
 
 		// +----+-------+----+------+----+
 		// | 03 | Queue | SP | List | LF |
@@ -153,16 +195,23 @@ public class LpdServerProtocol {
 		// indicated with ASCII LF control characters. The lines may also
 		// contain ASCII HT control characters.
 
-		String line = readLine(is);
+		String line = readLine();
 		String[] lines = line.split(REGEXP_WHITESPACE);
 		String queue = lines[0];
-		String[] list = lines[1].split(REGEXP_WHITESPACE);
-		String state = lpdQueue.sendQueueStateShort(queue, list);
-		os.write(state.getBytes(lpdCharset));
+		String[] list = (lines.length > 1) ? lines[1].split(REGEXP_WHITESPACE)
+				: null;
+		String state = printJobQueue.sendQueueStateShort(queue, list);
+		clientOutStream.write(state.getBytes(protocolCharset));
+		clientOutStream.flush();
 	}
 
-	private void handleSendQueueStateLongCommand(InputStream is, OutputStream os)
-			throws IOException {
+	/**
+	 * Handles the send queue state long command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handleSendQueueStateLongCommand() throws IOException {
 
 		// +----+-------+----+------+----+
 		// | 04 | Queue | SP | List | LF |
@@ -179,16 +228,23 @@ public class LpdServerProtocol {
 		// indicated with ASCII LF control characters. The lines may also
 		// contain ASCII HT control characters.
 
-		String line = readLine(is);
+		String line = readLine();
 		String[] lines = line.split(REGEXP_WHITESPACE);
 		String queue = lines[0];
 		String[] list = (lines.length > 1) ? lines[1].split(REGEXP_WHITESPACE)
 				: null;
-		String state = lpdQueue.sendQueueStateLong(queue, list);
-		os.write(state.getBytes(lpdCharset));
+		String state = printJobQueue.sendQueueStateLong(queue, list);
+		clientOutStream.write(state.getBytes(protocolCharset));
+		clientOutStream.flush();
 	}
 
-	private void handleRemoveJobsCommand(InputStream is) throws IOException {
+	/**
+	 * Handles the remove jobs command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handleRemoveJobsCommand() throws IOException {
 
 		// +----+-------+----+-------+----+------+----+
 		// | 05 | Queue | SP | Agent | SP | List | LF |
@@ -206,14 +262,21 @@ public class LpdServerProtocol {
 		// numbers. That is, agent "root" can delete jobs by user name but no
 		// other agents can.
 
-		String line = readLine(is);
+		String line = readLine();
 		String[] lines = line.split(REGEXP_WHITESPACE);
 		String queue = lines[0];
 		String agent = lines[1];
-		String[] list = lines[2].split(REGEXP_WHITESPACE);
-		lpdQueue.removeJobs(queue, agent, list);
+		String[] list = (lines.length > 2) ? lines[2].split(REGEXP_WHITESPACE)
+				: null;
+		printJobQueue.removeJobs(queue, agent, list);
 	}
 
+	/**
+	 * Handles the abort job sub command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
 	private void handleAbortJobCommand() throws IOException {
 
 		// +----+----+
@@ -224,11 +287,16 @@ public class LpdServerProtocol {
 		// No operands should be supplied. This subcommand will remove any
 		// files which have been created during this "Receive job" command.
 
-		lpdQueue.abortJob();
+		printJobQueue.abortJob();
 	}
 
-	private void handleReceiveControlFile(InputStream is, OutputStream os)
-			throws IOException {
+	/**
+	 * Handles the receive control file sub command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handleReceiveControlFile() throws IOException {
 
 		// +----+-------+----+------+----+
 		// | 02 | Count | SP | Name | LF |
@@ -251,17 +319,23 @@ public class LpdServerProtocol {
 		// the file being sent is complete. A second level of acknowledgement
 		// processing must occur at this point.
 
-		String line = readLine(is);
+		String line = readLine();
 		String[] lines = line.split(REGEXP_WHITESPACE);
 		int count = Integer.valueOf(lines[0]);
 		String name = lines[1];
-		acknowledge(null, os, ACK_SUCCESS);
-		byte code = lpdQueue.receiveControlFile(count, name, is);
-		acknowledge(is, os, code);
+		acknowledge(false, ACK_SUCCESS);
+		byte code = printJobQueue.receiveControlFile(count, name,
+				clientInStream);
+		acknowledge(true, code);
 	}
 
-	private void handleReceiveDataFile(InputStream is, OutputStream os)
-			throws IOException {
+	/**
+	 * Handles the receive data file sub command.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void handleReceiveDataFile() throws IOException {
 
 		// +----+-------+----+------+----+
 		// | 03 | Count | SP | Name | LF |
@@ -284,22 +358,32 @@ public class LpdServerProtocol {
 		// file being sent is complete. A second level of acknowledgement
 		// processing must occur at this point.
 
-		String line = readLine(is);
+		String line = readLine();
 		String[] lines = line.split(REGEXP_WHITESPACE);
 		int count = Integer.valueOf(lines[0]);
 		String name = lines[1];
-		acknowledge(null, os, ACK_SUCCESS);
-		byte code = lpdQueue.receiveDataFile(count, name, is);
-		acknowledge(is, os, code);
+		acknowledge(false, ACK_SUCCESS);
+		byte code = printJobQueue.receiveDataFile(count, name, clientInStream);
+		acknowledge(true, code);
 	}
 
-	private void acknowledge(InputStream is, OutputStream os, byte code)
-			throws IOException {
+	/**
+	 * Performs a protocol ack.
+	 * 
+	 * @param receiveAck
+	 *            true if an ack is expected from the client.
+	 * @param code
+	 *            the ack code to send to the client.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private void acknowledge(boolean receiveAck, byte code) throws IOException {
 
 		// receive ack code
 
-		if (is != null) {
-			int ack = is.read();
+		if (receiveAck) {
+			int ack = clientInStream.read();
 			if (ack != 0) {
 				throw new IOException("Received invalid ack: " + ack);
 			}
@@ -307,14 +391,23 @@ public class LpdServerProtocol {
 
 		// send ack code
 
-		os.write(code);
+		clientOutStream.write(code);
+		clientOutStream.flush();
 	}
 
-	private String readLine(InputStream is) throws IOException {
+	/**
+	 * Reads a protocol line from the client connection.
+	 * 
+	 * @return a protocol line.
+	 * 
+	 * @throws IOException
+	 *             throws if an I/O error happens during the protocol.
+	 */
+	private String readLine() throws IOException {
 
 		StringBuilder sb = new StringBuilder();
 		while (true) {
-			int c = is.read();
+			int c = clientInStream.read();
 			if (c == -1) {
 				break;
 			}

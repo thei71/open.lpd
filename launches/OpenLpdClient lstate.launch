@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
-<listEntry value="/open.lpd/src/main/java/open/lpd/server/impl/LpdServer.java"/>
+<listEntry value="/open.lpd/src/main/java/open/lpd/client/impl/LpdClient.java"/>
 </listAttribute>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
 <listEntry value="1"/>
 </listAttribute>
 <booleanAttribute key="org.eclipse.jdt.launching.ATTR_USE_START_ON_FIRST_THREAD" value="true"/>
 <stringAttribute key="org.eclipse.jdt.launching.CLASSPATH_PROVIDER" value="org.eclipse.m2e.launchconfig.classpathProvider"/>
-<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="open.lpd.server.impl.LpdServer"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--host 0.0.0.0 --port 515 --script &quot;wscript.exe work/scripts/queue.vbs //nologo $1 \&quot;$2\&quot;&quot; --queuefolder work/queues"/>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="open.lpd.client.impl.LpdClient"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--cmd lstate --queue TXT"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="open.lpd"/>
 <stringAttribute key="org.eclipse.jdt.launching.SOURCE_PATH_PROVIDER" value="org.eclipse.m2e.launchconfig.sourcepathProvider"/>
 </launchConfiguration>

@@ -27,6 +27,10 @@ import java.util.concurrent.Executors;
 
 import open.lpd.server.LpdServerProtocol;
 
+/**
+ * A ready to go LPD server that uses a file based queue implementation. Print
+ * jobs are stored as sub folders of queue folders.
+ */
 public class LpdServer {
 
 	private static final String QUOTE = "\"";
@@ -38,8 +42,8 @@ public class LpdServer {
 	private static final String OPTION_CLIENT_CONNECTION_THREADS = "--clientConnectionThreads";
 	private static final String DEFAULT_HOST = "0.0.0.0";
 	private static final String DEFAULT_PORT = "515";
-	private static final String DEFAULT_QUEUE_FOLDER = "work/queues";
-	private static final String DEFAULT_SCRIPT_COMMAND = "work/scripts/queue.sh $1 \"$2\"";
+	private static final String DEFAULT_QUEUE_FOLDER = "queues";
+	private static final String DEFAULT_SCRIPT_COMMAND = "queue.sh $1 $2";
 	private static final String DEFAULT_SOCKET_BACKLOG_SIZE = "100";
 	private static final String DEFAULT_CLIENT_CONNECTION_THREADS = "8";
 
@@ -75,11 +79,12 @@ public class LpdServer {
 					public void run() {
 						try {
 							try {
-								new LpdServerProtocol(clientSocket
-										.getInputStream(), clientSocket
-										.getOutputStream(),
-										new FileBasedLpdQueue(queueFolderName,
-												scriptCmd)).handle();
+								LpdServerProtocol protocol = new LpdServerProtocol(
+										clientSocket.getInputStream(),
+										clientSocket.getOutputStream(),
+										new FileBasedPrintJobQueue(queueFolderName,
+												scriptCmd));
+								protocol.handle();
 							} finally {
 								clientSocket.close();
 							}

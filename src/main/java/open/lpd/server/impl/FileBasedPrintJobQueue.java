@@ -19,25 +19,45 @@ package open.lpd.server.impl;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import open.lpd.server.ILpdQueue;
+import open.lpd.server.IPrintJobQueue;
 import open.lpd.server.LpdServerProtocol;
 
-public class FileBasedLpdQueue implements ILpdQueue {
+/**
+ * A file based print job queue that stores print jobs as sub folders of queue
+ * folders.
+ * 
+ * <pre>
+ * {@code
+ * Queues folder structure example:
+ *   queues/  
+ *     AFP/ ...................... queue folder of queue "AFP"
+ *     PDF/ ...................... queue folder of queue "PDF"
+ *       1406576720765-1 ......... print job folder (=print job name)
+ *         cfA000localhost ....... LPD control file
+ *         dfA000localhost.PDF ... data file
+ *     RAW/ ...................... queue folder of queue "RAW"
+ *     TXT/ ...................... queue folder of queue "TXT"
+ *       1406576408562-0/ ........ print job folder (=print job name)
+ *         cfA000localhost ....... LPD control file
+ *         dfA000localhost.TXT ... data file
+ * }
+ * </pre>
+ */
+public class FileBasedPrintJobQueue implements IPrintJobQueue {
 
 	private static final byte ERR_QUEUE_DOES_NOT_EXIST = 1;
 	private static final byte ERR_WRONG_CONTROL_FILE_NAME = 2;
 	private static final byte ERR_WRONG_DATA_FILE_NAME = 3;
+	private static final int MAX_BUFFER_SIZE = 4096;
 
 	private static long jobId = 0;
 
@@ -46,7 +66,15 @@ public class FileBasedLpdQueue implements ILpdQueue {
 	private String subCmdQueue;
 	private String scriptCmd;
 
-	public FileBasedLpdQueue(String queueFolderName, String scriptCmd) {
+	/**
+	 * Creates a file based print job queue.
+	 * 
+	 * @param queueFolderName
+	 *            the queue folder name.
+	 * @param scriptCmd
+	 *            the script command to execute on print jobs.
+	 */
+	public FileBasedPrintJobQueue(String queueFolderName, String scriptCmd) {
 		this.queueFolderName = queueFolderName;
 		this.scriptCmd = scriptCmd;
 		this.subCmdPrintJob = null;
@@ -75,7 +103,7 @@ public class FileBasedLpdQueue implements ILpdQueue {
 			return ERR_QUEUE_DOES_NOT_EXIST;
 		}
 		subCmdQueue = queue;
-		synchronized (FileBasedLpdQueue.class) {
+		synchronized (FileBasedPrintJobQueue.class) {
 			subCmdPrintJob = new Date().getTime() + "-" + String.valueOf(jobId);
 			jobId++;
 		}
@@ -158,10 +186,14 @@ public class FileBasedLpdQueue implements ILpdQueue {
 		if (queueExists(queue)) {
 			for (File printJobFolder : new File(queueFolderName, queue)
 					.listFiles()) {
-				for (String name : list) {
-					if (printJobFolder.getName().equals(name)
-							&& printJobFolder.isDirectory()) {
-						removePrintJobFolder(printJobFolder);
+				if (printJobFolder.isDirectory()) {
+					if (list != null) {
+						for (String name : list) {
+							if (printJobFolder.getName().equals(name)
+									&& printJobFolder.isDirectory()) {
+								removePrintJobFolder(printJobFolder);
+							}
+						}
 					}
 				}
 			}
@@ -183,8 +215,8 @@ public class FileBasedLpdQueue implements ILpdQueue {
 	}
 
 	@Override
-	public byte receiveControlFile(int count, String name, InputStream is)
-			throws IOException {
+	public byte receiveControlFile(int count, String name,
+			InputStream clientInStream) throws IOException {
 
 		// protocol sub command implementation
 
@@ -192,7 +224,8 @@ public class FileBasedLpdQueue implements ILpdQueue {
 			return ERR_WRONG_CONTROL_FILE_NAME;
 		}
 		if (queueExists(subCmdQueue)) {
-			receiveFile(subCmdQueue, subCmdPrintJob, count, name, is);
+			receiveFile(subCmdQueue, subCmdPrintJob, count, name,
+					clientInStream);
 			return LpdServerProtocol.ACK_SUCCESS;
 		} else {
 			return ERR_QUEUE_DOES_NOT_EXIST;
@@ -200,8 +233,8 @@ public class FileBasedLpdQueue implements ILpdQueue {
 	}
 
 	@Override
-	public byte receiveDataFile(int count, String name, InputStream is)
-			throws IOException {
+	public byte receiveDataFile(int count, String name,
+			InputStream clientInStream) throws IOException {
 
 		// protocol sub command implementation
 
@@ -209,7 +242,8 @@ public class FileBasedLpdQueue implements ILpdQueue {
 			return ERR_WRONG_DATA_FILE_NAME;
 		}
 		if (queueExists(subCmdQueue)) {
-			receiveFile(subCmdQueue, subCmdPrintJob, count, name, is);
+			receiveFile(subCmdQueue, subCmdPrintJob, count, name,
+					clientInStream);
 			return LpdServerProtocol.ACK_SUCCESS;
 		} else {
 			return ERR_QUEUE_DOES_NOT_EXIST;
@@ -217,7 +251,7 @@ public class FileBasedLpdQueue implements ILpdQueue {
 	}
 
 	private File receiveFile(String queue, String printJob, int count,
-			String name, InputStream is) throws IOException {
+			String name, InputStream clientInStream) throws IOException {
 
 		// file name sanity check
 
@@ -238,19 +272,33 @@ public class FileBasedLpdQueue implements ILpdQueue {
 
 		// receive file to print job folder
 
-		FileOutputStream fos = null;
-		BufferedOutputStream bos = null;
+		FileOutputStream fos = new FileOutputStream(file);
+		BufferedOutputStream bos = new BufferedOutputStream(fos);
 		try {
-			fos = new FileOutputStream(file);
-			bos = new BufferedOutputStream(fos);
-			readBinary(is, bos, count);
+			int bytesRead = 0;
+			while ((count > 0) && (bytesRead < count)) {
+				int bytesLeft = count - bytesRead;
+				if (bytesLeft > MAX_BUFFER_SIZE) {
+					bytesLeft = MAX_BUFFER_SIZE;
+				}
+				byte[] buf = new byte[bytesLeft];
+				int bread = clientInStream.read(buf);
+				if (bread == -1) {
+					break;
+				}
+				bos.write(buf, 0, bread);
+				bytesRead += bread;
+			}
+			if (bytesRead != count) {
+				throw new IOException("Expected " + count
+						+ " byte for file but received " + bytesRead + " byte.");
+			}
 		} catch (SocketTimeoutException e) {
 			if (count > 0) {
 				throw e;
 			}
-			// just close gracefully
 		} finally {
-			closeQuietly(bos);
+			bos.close();
 			fos.close();
 		}
 		return file;
@@ -271,22 +319,6 @@ public class FileBasedLpdQueue implements ILpdQueue {
 			}
 		}
 		return printJobFolder;
-	}
-
-	private void readBinary(InputStream is, OutputStream os, int count)
-			throws IOException {
-
-		// read a binary file from a stream
-
-		int bytesRead = 0;
-		while ((count > 0) && (bytesRead < count)) {
-			int c = is.read();
-			if (c == -1) {
-				break;
-			}
-			os.write(c);
-			bytesRead++;
-		}
 	}
 
 	private boolean queueExists(String queue) {
@@ -322,20 +354,7 @@ public class FileBasedLpdQueue implements ILpdQueue {
 		printJobFolder.delete();
 	}
 
-	private void closeQuietly(Closeable closeable) {
-
-		// ensure closed quietly
-
-		try {
-			if (closeable != null) {
-				closeable.close();
-			}
-		} catch (IOException e) {
-			// ignore quietly
-		}
-	}
-
-	public String runScript(String queue, File printJobFolder)
+	private String runScript(String queue, File printJobFolder)
 			throws IOException {
 
 		// run a configured OS specific script file to deal with the print job

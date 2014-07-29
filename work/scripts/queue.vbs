@@ -3,7 +3,7 @@
 queueName = WScript.Arguments(0)
 printJobFolder = WScript.Arguments(1)
 
-' find data file and print
+' get data file and open in default application
 
 Set Fso = WScript.CreateObject("Scripting.FileSystemObject")
 Set objFolder = Fso.GetFolder(printJobFolder)
@@ -17,6 +17,9 @@ For Each objFile in colFiles
 			printFileName = dataFileName & "." & queueName
 			Fso.MoveFile dataFileName, printFileName
 		End If
+		
+		' open in default application, use "print" verb if you want to print the file
+		
 		Set objShell = CreateObject("Shell.Application")
 		objShell.ShellExecute printFileName, "", "", "open", 1
 	End If

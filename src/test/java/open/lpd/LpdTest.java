@@ -24,7 +24,6 @@ import java.io.IOException;
 import open.lpd.client.LpdClientProtocol;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 public class LpdTest {
@@ -73,22 +72,17 @@ public class LpdTest {
 			+ LpdClientProtocol.LPD_WHITESPACE + "cfA000" + TEST_CLIENT_HOST
 			+ LpdClientProtocol.LPD_LF + TEST_CONTROL_FILE + "\u0000";
 
-	private LpdClientProtocol clientProtocol;
-
-	@Before
-	public void setUp() {
-		clientProtocol = new LpdClientProtocol();
-		clientProtocol.setCharset(TEST_CHARSET);
-		clientProtocol.setSendDataFirst(false);
-		clientProtocol.setClientHost(TEST_CLIENT_HOST);
-		clientProtocol.setUser(TEST_AGENT);
-	}
-
 	@Test
 	public void testLpdProtocolCmd1() throws IOException {
 
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		clientProtocol.printQueue(bos, TEST_QUEUE);
+		LpdClientProtocol clientProtocol = new LpdClientProtocol(null, bos);
+		clientProtocol.setCharset(TEST_CHARSET);
+		clientProtocol.setSendDataFirst(false);
+		clientProtocol.setClientHost(TEST_CLIENT_HOST);
+		clientProtocol.setUser(TEST_AGENT);
+
+		clientProtocol.printQueue(TEST_QUEUE);
 		Assert.assertArrayEquals(
 				PROTOCOL_PRINT_ANY_WAITING_JOBS.getBytes(TEST_CHARSET),
 				bos.toByteArray());
@@ -100,10 +94,16 @@ public class LpdTest {
 		byte[] ackStream = "\u0000\u0000\u0000\u0000\u0000"
 				.getBytes(TEST_CHARSET);
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		LpdClientProtocol clientProtocol = new LpdClientProtocol(
+				new ByteArrayInputStream(ackStream), bos);
+		clientProtocol.setCharset(TEST_CHARSET);
+		clientProtocol.setSendDataFirst(false);
+		clientProtocol.setClientHost(TEST_CLIENT_HOST);
+		clientProtocol.setUser(TEST_AGENT);
+
 		byte[] testData = TEST_DATA.getBytes(TEST_CHARSET);
-		clientProtocol.sendFile(bos, new ByteArrayInputStream(ackStream),
-				TEST_QUEUE, TEST_JOB_NAME, new ByteArrayInputStream(testData),
-				testData.length);
+		clientProtocol.sendFile(TEST_QUEUE, TEST_JOB_NAME,
+				new ByteArrayInputStream(testData), testData.length);
 		Assert.assertArrayEquals(PROTOCOL_SEND_FILE.getBytes(TEST_CHARSET),
 				bos.toByteArray());
 	}
@@ -111,14 +111,20 @@ public class LpdTest {
 	@Test
 	public void testLpdProtocolCmd2DataFirst() throws IOException {
 
-		clientProtocol.setSendDataFirst(true);
 		byte[] ackStream = "\u0000\u0000\u0000\u0000\u0000"
 				.getBytes(TEST_CHARSET);
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		LpdClientProtocol clientProtocol = new LpdClientProtocol(
+				new ByteArrayInputStream(ackStream), bos);
+		clientProtocol.setCharset(TEST_CHARSET);
+		clientProtocol.setSendDataFirst(false);
+		clientProtocol.setClientHost(TEST_CLIENT_HOST);
+		clientProtocol.setUser(TEST_AGENT);
+
+		clientProtocol.setSendDataFirst(true);
 		byte[] testData = TEST_DATA.getBytes(TEST_CHARSET);
-		clientProtocol.sendFile(bos, new ByteArrayInputStream(ackStream),
-				TEST_QUEUE, TEST_JOB_NAME, new ByteArrayInputStream(testData),
-				testData.length);
+		clientProtocol.sendFile(TEST_QUEUE, TEST_JOB_NAME,
+				new ByteArrayInputStream(testData), testData.length);
 		Assert.assertArrayEquals(
 				PROTOCOL_SEND_FILE_DATA_FIRST.getBytes(TEST_CHARSET),
 				bos.toByteArray());
@@ -128,10 +134,16 @@ public class LpdTest {
 	public void testLpdProtocolCmd3() throws IOException {
 
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		String queueState = clientProtocol.getShortQueueState(
-				bos,
-				new ByteArrayInputStream(TEST_SHORT_QUEUE_STATE
-						.getBytes(TEST_CHARSET)), TEST_QUEUE, TEST_JOBS);
+		LpdClientProtocol clientProtocol = new LpdClientProtocol(
+				new ByteArrayInputStream(
+						TEST_SHORT_QUEUE_STATE.getBytes(TEST_CHARSET)), bos);
+		clientProtocol.setCharset(TEST_CHARSET);
+		clientProtocol.setSendDataFirst(false);
+		clientProtocol.setClientHost(TEST_CLIENT_HOST);
+		clientProtocol.setUser(TEST_AGENT);
+
+		String queueState = clientProtocol.getShortQueueState(TEST_QUEUE,
+				TEST_JOBS);
 		Assert.assertArrayEquals(
 				PROTOCOL_GET_SHORT_QUEUE_STATE.getBytes(TEST_CHARSET),
 				bos.toByteArray());
@@ -142,10 +154,16 @@ public class LpdTest {
 	public void testLpdProtocolCmd4() throws IOException {
 
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		String queueState = clientProtocol.getLongQueueState(
-				bos,
-				new ByteArrayInputStream(TEST_LONG_QUEUE_STATE
-						.getBytes(TEST_CHARSET)), TEST_QUEUE, TEST_JOBS);
+		LpdClientProtocol clientProtocol = new LpdClientProtocol(
+				new ByteArrayInputStream(
+						TEST_LONG_QUEUE_STATE.getBytes(TEST_CHARSET)), bos);
+		clientProtocol.setCharset(TEST_CHARSET);
+		clientProtocol.setSendDataFirst(false);
+		clientProtocol.setClientHost(TEST_CLIENT_HOST);
+		clientProtocol.setUser(TEST_AGENT);
+
+		String queueState = clientProtocol.getLongQueueState(TEST_QUEUE,
+				TEST_JOBS);
 		Assert.assertArrayEquals(
 				PROTOCOL_GET_LONG_QUEUE_STATE.getBytes(TEST_CHARSET),
 				bos.toByteArray());
@@ -156,7 +174,13 @@ public class LpdTest {
 	public void testLpdProtocolCmd5() throws IOException {
 
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		clientProtocol.removeJobs(bos, TEST_QUEUE, TEST_JOBS);
+		LpdClientProtocol clientProtocol = new LpdClientProtocol(null, bos);
+		clientProtocol.setCharset(TEST_CHARSET);
+		clientProtocol.setSendDataFirst(false);
+		clientProtocol.setClientHost(TEST_CLIENT_HOST);
+		clientProtocol.setUser(TEST_AGENT);
+
+		clientProtocol.removeJobs(TEST_QUEUE, TEST_JOBS);
 		Assert.assertArrayEquals(PROTOCOL_REMOVE_JOBS.getBytes(TEST_CHARSET),
 				bos.toByteArray());
 	}

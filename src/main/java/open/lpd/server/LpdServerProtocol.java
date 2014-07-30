@@ -53,14 +53,23 @@ public class LpdServerProtocol {
 	 *            the stream to receive protocol commands from the client.
 	 * @param clientOutStream
 	 *            the stream to send protocol commands to the client.
-	 * @param lpdQueue
+	 * @param printJobQueue
 	 *            the queue that handles the print jobs of this server.
 	 */
 	public LpdServerProtocol(InputStream clientInStream,
-			OutputStream clientOutStream, IPrintJobQueue lpdQueue) {
+			OutputStream clientOutStream, IPrintJobQueue printJobQueue) {
 		this.clientInStream = clientInStream;
 		this.clientOutStream = clientOutStream;
-		this.printJobQueue = lpdQueue;
+		this.printJobQueue = printJobQueue;
+	}
+
+	/**
+	 * Gets the print job queue.
+	 * 
+	 * @return the print job queue.
+	 */
+	public IPrintJobQueue getQueue() {
+		return printJobQueue;
 	}
 
 	/**

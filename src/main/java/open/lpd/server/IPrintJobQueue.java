@@ -20,9 +20,11 @@ package open.lpd.server;
 import java.io.IOException;
 import java.io.InputStream;
 
+import open.lpd.server.impl.FileBasedPrintJobQueue;
+
 /**
  * LPD queue interface for implementing a LPD protocol server. A file based
- * sample implementation is provided (@see FileBasedPrintJobQueue).
+ * sample implementation is provided, {@link FileBasedPrintJobQueue}.
  */
 public interface IPrintJobQueue {
 
@@ -42,9 +44,8 @@ public interface IPrintJobQueue {
 	 * 
 	 * @param queue
 	 *            the name of the queue.
-	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
-	 *         or an error code (any value not equal to
-	 *         LpdProtocolHandler.ACK_SUCCESS) indicating failure.
+	 * @return a code indicating success, {@link LpdServerProtocol#ACK_SUCCESS},
+	 *         or an error code (any other value) indicating failure.
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */
@@ -57,9 +58,8 @@ public interface IPrintJobQueue {
 	 *            the name of the queue.
 	 * @param list
 	 *            the list of print jobs.
-	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
-	 *         or an error code (any value not equal to
-	 *         LpdProtocolHandler.ACK_SUCCESS) indicating failure.
+	 * @return a code indicating success, {@link LpdServerProtocol#ACK_SUCCESS},
+	 *         or an error code (any other value) indicating failure.
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */
@@ -72,9 +72,8 @@ public interface IPrintJobQueue {
 	 *            the name of the queue.
 	 * @param list
 	 *            the list of print jobs.
-	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
-	 *         or an error code (any value not equal to
-	 *         LpdProtocolHandler.ACK_SUCCESS) indicating failure.
+	 * @return a code indicating success, {@link LpdServerProtocol#ACK_SUCCESS},
+	 *         or an error code (any other value) indicating failure.
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */
@@ -111,9 +110,8 @@ public interface IPrintJobQueue {
 	 *            the name of the control file.
 	 * @param clientInStream
 	 *            the input stream to read the control file from.
-	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
-	 *         or an error code (any value not equal to
-	 *         LpdProtocolHandler.ACK_SUCCESS) indicating failure.
+	 * @return a code indicating success, {@link LpdServerProtocol#ACK_SUCCESS},
+	 *         or an error code (any other value) indicating failure.
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */
@@ -129,9 +127,8 @@ public interface IPrintJobQueue {
 	 *            the name of the data file.
 	 * @param clientInStream
 	 *            the input stream to read the data file from.
-	 * @return a code indicating success (@see LpdProtocolHandler.ACK_SUCCESS)
-	 *         or an error code (any value not equal to
-	 *         LpdProtocolHandler.ACK_SUCCESS) indicating failure.
+	 * @return a code indicating success, {@link LpdServerProtocol#ACK_SUCCESS},
+	 *         or an error code (any other value) indicating failure.
 	 * @throws IOException
 	 *             throws if there was an input output error.
 	 */

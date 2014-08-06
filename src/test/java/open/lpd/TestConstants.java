@@ -15,31 +15,38 @@ public class TestConstants {
 			+ LpdClientProtocol.LPD_LF + "test2äöüÄÖÜß\t33 byte\tuser";
 	public static final String DATA = "Printed Data, öäüÖÄÜß.";
 	public static final String CLIENT_HOST = "testhostäöüÄÖÜß";
+	public static final String NO_RESPONSE = "";
 
-	public static final String PRINT_ANY_WAITING_JOBS = "\u0001"
-			+ QUEUE + LpdClientProtocol.LPD_LF;
-	public static final String GET_SHORT_QUEUE_STATE = "\u0003"
-			+ QUEUE + LpdClientProtocol.LPD_WHITESPACE + JOBS
+	public static final String CONTROL_DATA_LENGTH = "\\d+";
+	public static final String CONTROL_DATA_PATTERN = "([^\u0000]+)";
+	public static final String ACK_STREAM = "\u0000\u0000\u0000\u0000\u0000";
+	public static final String SINGLE_ACK_STREAM = "\u0000";
+
+	public static final String PRINT_ANY_WAITING_JOBS = "\u0001" + QUEUE
 			+ LpdClientProtocol.LPD_LF;
-	public static final String GET_LONG_QUEUE_STATE = "\u0004"
-			+ QUEUE + LpdClientProtocol.LPD_WHITESPACE + JOBS
+	public static final String GET_SHORT_QUEUE_STATE = "\u0003" + QUEUE
+			+ LpdClientProtocol.LPD_WHITESPACE + JOBS
+			+ LpdClientProtocol.LPD_LF;
+	public static final String GET_LONG_QUEUE_STATE = "\u0004" + QUEUE
+			+ LpdClientProtocol.LPD_WHITESPACE + JOBS
 			+ LpdClientProtocol.LPD_LF;
 	public static final String REMOVE_JOBS = "\u0005" + QUEUE
 			+ LpdClientProtocol.LPD_WHITESPACE + AGENT
 			+ LpdClientProtocol.LPD_WHITESPACE + JOBS
 			+ LpdClientProtocol.LPD_LF;
 	public static final String SEND_FILE = "\u0002" + QUEUE
-			+ LpdClientProtocol.LPD_LF + "\u0002\\d+"
+			+ LpdClientProtocol.LPD_LF + "\u0002" + CONTROL_DATA_LENGTH
 			+ LpdClientProtocol.LPD_WHITESPACE + "cfA000" + CLIENT_HOST
-			+ LpdClientProtocol.LPD_LF + "([^\u0000]+)\u0000\u0003"
+			+ LpdClientProtocol.LPD_LF + CONTROL_DATA_PATTERN + "\u0000\u0003"
 			+ DATA.length() + LpdClientProtocol.LPD_WHITESPACE + "dfA000"
-			+ CLIENT_HOST + LpdClientProtocol.LPD_LF + DATA
+			+ CLIENT_HOST + LpdClientProtocol.LPD_LF + DATA + "\u0000";
+	public static final String SEND_FILE_DATA_FIRST = "\u0002" + QUEUE
+			+ LpdClientProtocol.LPD_LF + "\u0003" + DATA.length()
+			+ LpdClientProtocol.LPD_WHITESPACE + "dfA000" + CLIENT_HOST
+			+ LpdClientProtocol.LPD_LF + DATA + "\u0000\u0002"
+			+ CONTROL_DATA_LENGTH + LpdClientProtocol.LPD_WHITESPACE + "cfA000"
+			+ CLIENT_HOST + LpdClientProtocol.LPD_LF + CONTROL_DATA_PATTERN
 			+ "\u0000";
-	public static final String SEND_FILE_DATA_FIRST = "\u0002"
-			+ QUEUE + LpdClientProtocol.LPD_LF + "\u0003"
-			+ DATA.length() + LpdClientProtocol.LPD_WHITESPACE + "dfA000"
-			+ CLIENT_HOST + LpdClientProtocol.LPD_LF + DATA
-			+ "\u0000\u0002\\d+" + LpdClientProtocol.LPD_WHITESPACE + "cfA000"
-			+ CLIENT_HOST + LpdClientProtocol.LPD_LF
-			+ "([^\u0000]+)\u0000";
+	public static final String ABORT_JOB = "\u0002" + QUEUE
+			+ LpdClientProtocol.LPD_LF + "\u0001" + LpdClientProtocol.LPD_LF;
 }

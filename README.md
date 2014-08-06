@@ -1,34 +1,29 @@
-===========================================================================================================
-= open.lpd
-===========================================================================================================
+***********************************************************************************************************
+* open.lpd
 
 A LPD protocol implementation for server and client according to RFC 1179 - "Line Printer Daemon Protocol".
 
 ***********************************************************************************************************
 * Contents
-***********************************************************************************************************
 
-- a LPD server protocol implementation so you can write your own server (open.lpd.server.LpdServerProtocol)
-- a LPD client protocol implementation so you can write your own client (open.lpd.client.LpdClientProtocol)
-- a ready to go LPD server (open.lpd.server.impl.LpdServer)
-- a ready to go LPD client (open.lpd.client.impl.LpdClient)
+a LPD server protocol implementation so you can write your own server (open.lpd.server.LpdServerProtocol)
+a LPD client protocol implementation so you can write your own client (open.lpd.client.LpdClientProtocol)
+a ready to go LPD server (open.lpd.server.impl.LpdServer)
+a ready to go LPD client (open.lpd.client.impl.LpdClient)
 
 ***********************************************************************************************************
 * LPD server protocol implementation
-***********************************************************************************************************
 
 Use the LpdServerProtocol class to implement your own LPD server. The LpdServerProtocol uses the 
 IPrintJobQueue interface as a queue back end to handle print jobs.
 
 ***********************************************************************************************************
 * LPD client protocol implementation
-***********************************************************************************************************
 
 Use the LpdClientProtocol class to implement your own LPD client. 
 
 ***********************************************************************************************************
 * LPD server
-***********************************************************************************************************
 
 A ready to go LPD server that uses a file based queue implementation. Print jobs are stored as sub folders of
 queue folders.
@@ -62,7 +57,6 @@ Examples:
 
 ***********************************************************************************************************
 * LPD client
-***********************************************************************************************************
 
 A ready to go LPD client (aka "lpr") that can send files and standard LPD commands to a LPD server.
 

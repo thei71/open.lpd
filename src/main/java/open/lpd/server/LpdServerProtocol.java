@@ -38,8 +38,8 @@ public class LpdServerProtocol {
 	public static final byte SUB_CMD_RECEIVE_DATA_FILE = 3;
 	public static final String LPD_DEFAULT_CHARSET = "ASCII";
 	public static final byte ACK_SUCCESS = 0;
-	private static final String REGEXP_WHITESPACE = "\\s";
-	private static final int LPD_LF = 0x0a;
+	public static final char LPD_LF = 0x0a;
+	public static final String REGEXP_WHITESPACE = "\\s";
 
 	private IPrintJobQueue printJobQueue;
 	private InputStream clientInStream;
@@ -296,6 +296,7 @@ public class LpdServerProtocol {
 		// No operands should be supplied. This subcommand will remove any
 		// files which have been created during this "Receive job" command.
 
+		readLine();
 		printJobQueue.abortJob();
 	}
 

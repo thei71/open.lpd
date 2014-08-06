@@ -469,6 +469,9 @@ public class LpdClientProtocol {
 	}
 
 	private byte[] readResponse(Integer count) throws IOException {
+
+		// read a certain amount of bytes from the response
+
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		if (count == null) {
 			while (true) {

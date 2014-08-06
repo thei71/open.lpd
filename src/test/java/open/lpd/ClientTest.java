@@ -46,8 +46,10 @@ public class ClientTest {
 
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		LpdClientProtocol clientProtocol = createClientProtocol(null, bos);
-
 		clientProtocol.printQueue(TestConstants.QUEUE);
+
+		// check command
+
 		Assert.assertEquals(TestConstants.PRINT_ANY_WAITING_JOBS,
 				bos.toString(TestConstants.CHARSET));
 	}
@@ -55,17 +57,17 @@ public class ClientTest {
 	@Test
 	public void testClientProtocolCmd2() throws IOException {
 
-		byte[] ackStream = "\u0000\u0000\u0000\u0000\u0000"
+		byte[] ackStream = TestConstants.ACK_STREAM
 				.getBytes(TestConstants.CHARSET);
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		LpdClientProtocol clientProtocol = createClientProtocol(
 				new ByteArrayInputStream(ackStream), bos);
-
-		byte[] testData = TestConstants.DATA
-				.getBytes(TestConstants.CHARSET);
-		clientProtocol.sendFile(TestConstants.QUEUE,
-				TestConstants.JOB,
+		byte[] testData = TestConstants.DATA.getBytes(TestConstants.CHARSET);
+		clientProtocol.sendFile(TestConstants.QUEUE, TestConstants.JOB,
 				new ByteArrayInputStream(testData), testData.length);
+
+		// check command
+
 		Assert.assertTrue(Pattern.matches(TestConstants.SEND_FILE,
 				bos.toString(TestConstants.CHARSET)));
 	}
@@ -73,20 +75,19 @@ public class ClientTest {
 	@Test
 	public void testClientProtocolCmd2DataFirst() throws IOException {
 
-		byte[] ackStream = "\u0000\u0000\u0000\u0000\u0000"
+		byte[] ackStream = TestConstants.ACK_STREAM
 				.getBytes(TestConstants.CHARSET);
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		LpdClientProtocol clientProtocol = createClientProtocol(
 				new ByteArrayInputStream(ackStream), bos);
 		clientProtocol.setSendDataFirst(true);
-
-		byte[] testData = TestConstants.DATA
-				.getBytes(TestConstants.CHARSET);
-		clientProtocol.sendFile(TestConstants.QUEUE,
-				TestConstants.JOB,
+		byte[] testData = TestConstants.DATA.getBytes(TestConstants.CHARSET);
+		clientProtocol.sendFile(TestConstants.QUEUE, TestConstants.JOB,
 				new ByteArrayInputStream(testData), testData.length);
-		Assert.assertTrue(Pattern.matches(
-				TestConstants.SEND_FILE_DATA_FIRST,
+
+		// check command
+
+		Assert.assertTrue(Pattern.matches(TestConstants.SEND_FILE_DATA_FIRST,
 				bos.toString(TestConstants.CHARSET)));
 	}
 
@@ -101,8 +102,14 @@ public class ClientTest {
 
 		String queueState = clientProtocol.getShortQueueState(
 				TestConstants.QUEUE, TestConstants.JOBS);
+
+		// check command
+
 		Assert.assertEquals(TestConstants.GET_SHORT_QUEUE_STATE,
 				bos.toString(TestConstants.CHARSET));
+
+		// check response
+
 		Assert.assertEquals(TestConstants.SHORT_QUEUE_STATE, queueState);
 	}
 
@@ -114,11 +121,16 @@ public class ClientTest {
 				new ByteArrayInputStream(
 						TestConstants.LONG_QUEUE_STATE
 								.getBytes(TestConstants.CHARSET)), bos);
-
 		String queueState = clientProtocol.getLongQueueState(
 				TestConstants.QUEUE, TestConstants.JOBS);
+
+		// check command
+
 		Assert.assertEquals(TestConstants.GET_LONG_QUEUE_STATE,
 				bos.toString(TestConstants.CHARSET));
+
+		// check response
+
 		Assert.assertEquals(TestConstants.LONG_QUEUE_STATE, queueState);
 	}
 
@@ -128,8 +140,12 @@ public class ClientTest {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		LpdClientProtocol clientProtocol = createClientProtocol(null, bos);
 
-		clientProtocol.removeJobs(TestConstants.QUEUE,
-				TestConstants.JOBS);
+		// check command
+
+		clientProtocol.removeJobs(TestConstants.QUEUE, TestConstants.JOBS);
+
+		// check response
+
 		Assert.assertEquals(TestConstants.REMOVE_JOBS,
 				bos.toString(TestConstants.CHARSET));
 	}

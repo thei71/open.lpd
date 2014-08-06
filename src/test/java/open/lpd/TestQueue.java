@@ -17,9 +17,11 @@ public class TestQueue implements IPrintJobQueue {
 	private boolean finishedReceivingAPrinterJobFired;
 	private boolean abortJobFired;
 	private int invocationCount;
+	private Boolean dataFirst;
 
 	public TestQueue() {
 		this.invocationCount = 0;
+		dataFirst = null;
 	}
 
 	public int getInvocationCount() {
@@ -62,6 +64,10 @@ public class TestQueue implements IPrintJobQueue {
 		return abortJobFired;
 	}
 
+	public boolean isDataFirst() {
+		return dataFirst;
+	}
+
 	@Override
 	public String sendQueueStateShort(String queue, String[] list)
 			throws IOException {
@@ -88,16 +94,24 @@ public class TestQueue implements IPrintJobQueue {
 	@Override
 	public byte receiveDataFile(int count, String name,
 			InputStream clientInStream) throws IOException {
+		if (dataFirst == null) {
+			dataFirst = true;
+		}
 		invocationCount++;
 		receiveDataFileFired = true;
+		clientInStream.skip(count);
 		return 0;
 	}
 
 	@Override
 	public byte receiveControlFile(int count, String name,
 			InputStream clientInStream) throws IOException {
+		if (dataFirst == null) {
+			dataFirst = false;
+		}
 		invocationCount++;
 		receiveControlFileFired = true;
+		clientInStream.skip(count);
 		return 0;
 	}
 
